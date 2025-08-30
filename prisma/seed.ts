@@ -16,7 +16,8 @@ async function main() {
     skipDuplicates: true,
   });
 
-  console.log("✅ Seed completo");
+  console.log("Seed completo");
 }
 
 main().finally(() => prisma.$disconnect());
+

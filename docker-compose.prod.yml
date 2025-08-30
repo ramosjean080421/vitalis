@@ -1,0 +1,40 @@
+version: "3.9"
+services:
+  db:
+    image: postgres:16
+    container_name: vitalis_db_prod
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vitalis
+      POSTGRES_PASSWORD: vitalis
+      POSTGRES_DB: vitalis
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql://vitalis:vitalis@db:5432/vitalis?schema=public
+      PORT: 4001
+    depends_on:
+      - db
+    ports:
+      - "4001:4001"
+    command: sh -c "npx prisma migrate deploy && node dist/index.js"
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:4001
+    depends_on:
+      - api
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+

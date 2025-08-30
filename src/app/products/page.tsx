@@ -26,9 +26,14 @@ export default function ProductsPage() {
   });
 
   const create = useMutation({
-    mutationFn: (data: { sku: string; name: string; price: number }) => api.post<Product>("/products", data),
-    onSuccess: () => { setForm({ sku: "", name: "", price: "" }); qc.invalidateQueries({ queryKey: ["products"] }); },
-    onError: async (e: any) => setError(e?.message || e?.error || "Error al crear"),
+    mutationFn: (data: { sku: string; name: string; price: number }) =>
+      api.post<Product>("/products", data),
+    onSuccess: () => {
+      setForm({ sku: "", name: "", price: "" });
+      qc.invalidateQueries({ queryKey: ["products"] });
+    },
+    onError: async (e: any) =>
+      setError(e?.message || e?.error || "Error al crear"),
   });
 
   const remove = useMutation({
@@ -44,20 +49,38 @@ export default function ProductsPage() {
         onSubmit={(e) => {
           e.preventDefault();
           setError(null);
-          const price = Number(form.price);
-          if (!form.sku || !form.name || !Number.isFinite(price)) { setError("Completa SKU, nombre y precio"); return; }
+          const priceText = form.price.trim();
+          const price = Number(priceText);
+          if (!form.sku || !form.name || priceText === "" || !Number.isFinite(price)) {
+            setError("Completa SKU, nombre y precio");
+            return;
+          }
           create.mutate({ sku: form.sku, name: form.name, price });
         }}
         style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}
       >
-        <input placeholder="SKU" value={form.sku} onChange={(e) => setForm({ ...form, sku: e.target.value })} />
-        <input placeholder="Nombre" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-        <input placeholder="Precio" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} />
-        <button type="submit" disabled={create.isPending}>Crear</button>
+        <input
+          placeholder="SKU"
+          value={form.sku}
+          onChange={(e) => setForm({ ...form, sku: e.target.value })}
+        />
+        <input
+          placeholder="Nombre"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+        <input
+          placeholder="Precio"
+          value={form.price}
+          onChange={(e) => setForm({ ...form, price: e.target.value })}
+        />
+        <button type="submit" disabled={create.isPending}>
+          Crear
+        </button>
         {error && <span style={{ color: "red" }}>{error}</span>}
       </form>
 
-      {list.isLoading && <p>Cargando…</p>}
+      {list.isLoading && <p>Cargando...</p>}
       {list.isError && <p>Error al cargar</p>}
 
       <table style={{ borderCollapse: "collapse", width: "100%" }}>
@@ -74,17 +97,24 @@ export default function ProductsPage() {
             <tr key={p.id}>
               <td>{p.sku}</td>
               <td>{p.name}</td>
-              <td style={{ textAlign: "right" }}>{typeof p.price === "string" ? p.price : p.price.toFixed(2)}</td>
+              <td style={{ textAlign: "right" }}>
+                {typeof p.price === "string" ? p.price : p.price.toFixed(2)}
+              </td>
               <td>
                 <button onClick={() => remove.mutate(p.id)}>Eliminar</button>
               </td>
             </tr>
           ))}
           {list.data?.length === 0 && (
-            <tr><td colSpan={4} style={{ padding: 8, color: "#777" }}>Sin productos</td></tr>
+            <tr>
+              <td colSpan={4} style={{ padding: 8, color: "#777" }}>
+                Sin productos
+              </td>
+            </tr>
           )}
         </tbody>
       </table>
     </div>
   );
 }
+

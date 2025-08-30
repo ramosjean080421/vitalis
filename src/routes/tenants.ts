@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "../prisma";
 import { z } from "zod";
 
@@ -23,7 +24,7 @@ tenantsRouter.post("/", async (req, res) => {
     const created = await prisma.tenant.create({ data: { name, slug } });
     res.status(201).json(created);
   } catch (e: any) {
-    if (String(e.message).includes("Unique constraint")) {
+    if (e instanceof PrismaClientKnownRequestError && e.code === "P2002") {
       return res.status(409).json({ error: "SLUG_EXISTS", message: `El slug '${slug}' ya existe` });
     }
     throw e;

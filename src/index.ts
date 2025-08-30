@@ -6,11 +6,13 @@ import { tenantsRouter } from "./routes/tenants";
 import cors from "cors";
 
 const app = express();
+app.use(cors());
 app.use(express.json());
-import cors from "cors";
 
 // Healthchecks
-app.get("/health", (_req, res) => res.json({ status: "ok", service: "VITALIS", version: "0.1.0" }));
+app.get("/health", (_req, res) =>
+  res.json({ status: "ok", service: "VITALIS", version: "0.1.0" })
+);
 app.get("/db/health", async (_req, res) => {
   try {
     await prisma.$queryRaw`SELECT 1`;
@@ -23,7 +25,7 @@ app.get("/db/health", async (_req, res) => {
 // Tenants (no requieren X-Tenant)
 app.use("/tenants", tenantsRouter);
 
-// A partir de aquí, exigir X-Tenant
+// A partir de aqui, exigir X-Tenant
 app.use(tenantMiddleware);
 
 // Products (ligados al tenant)
@@ -33,10 +35,13 @@ app.use("/products", productsRouter);
 app.use((_req, res) => res.status(404).json({ error: "Not Found" }));
 
 // Error handler
-app.use((err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
-  console.error(err);
-  res.status(500).json({ error: "INTERNAL_ERROR" });
-});
+app.use(
+  (err: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+    console.error(err);
+    res.status(500).json({ error: "INTERNAL_ERROR" });
+  }
+);
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`✅ VITALIS listo en http://localhost:${PORT}`));
+app.listen(PORT, () => console.log(`VITALIS listo en http://localhost:${PORT}`));
+

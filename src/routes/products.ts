@@ -1,16 +1,36 @@
 import { Router } from "express";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { prisma } from "../prisma";
 import { createProductSchema, updateProductSchema } from "../validators/product";
 
 export const productsRouter = Router();
 
-// Listar productos del tenant
+// Listar productos del tenant con búsqueda y paginación
 productsRouter.get("/", async (req, res) => {
-  const items = await prisma.product.findMany({
-    where: { tenantId: req.tenantId },
-    orderBy: { createdAt: "desc" }
-  });
-  res.json(items);
+  const q = typeof req.query.q === "string" ? req.query.q.trim() : "";
+  const page = Math.max(1, Number(req.query.page) || 1);
+  const pageSizeRaw = Number(req.query.pageSize) || Number(req.query.limit) || 10;
+  const pageSize = Math.min(Math.max(1, pageSizeRaw), 100);
+  const skip = (page - 1) * pageSize;
+
+  const where = {
+    tenantId: req.tenantId,
+    ...(q
+      ? {
+          OR: [
+            { name: { contains: q, mode: "insensitive" as const } },
+            { sku: { contains: q, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
+
+  const [items, total] = await Promise.all([
+    prisma.product.findMany({ where, orderBy: { createdAt: "desc" }, skip, take: pageSize }),
+    prisma.product.count({ where }),
+  ]);
+
+  res.json({ items, total, page, pageSize });
 });
 
 // Crear producto
@@ -24,10 +44,17 @@ productsRouter.post("/", async (req, res) => {
   const exists = await prisma.product.findFirst({ where: { tenantId: req.tenantId, sku } });
   if (exists) return res.status(409).json({ error: "SKU_EXISTS", message: `SKU '${sku}' ya existe` });
 
-  const created = await prisma.product.create({
-    data: { tenantId: req.tenantId!, sku, name, price }
-  });
-  res.status(201).json(created);
+  try {
+    const created = await prisma.product.create({
+      data: { tenantId: req.tenantId!, sku, name, price }
+    });
+    res.status(201).json(created);
+  } catch (e: any) {
+    if (e instanceof PrismaClientKnownRequestError && e.code === "P2002") {
+      return res.status(409).json({ error: "SKU_EXISTS", message: `SKU '${sku}' ya existe` });
+    }
+    throw e;
+  }
 });
 
 // Actualizar
@@ -48,11 +75,18 @@ productsRouter.put("/:id", async (req, res) => {
     if (dupe) return res.status(409).json({ error: "SKU_EXISTS", message: `SKU '${sku}' ya existe` });
   }
 
-  const updated = await prisma.product.update({
-    where: { id },
-    data: { sku, name, price }
-  });
-  res.json(updated);
+  try {
+    const updated = await prisma.product.update({
+      where: { id },
+      data: { sku, name, price }
+    });
+    res.json(updated);
+  } catch (e: any) {
+    if (e instanceof PrismaClientKnownRequestError && e.code === "P2002") {
+      return res.status(409).json({ error: "SKU_EXISTS", message: `SKU '${sku}' ya existe` });
+    }
+    throw e;
+  }
 });
 
 // Eliminar
